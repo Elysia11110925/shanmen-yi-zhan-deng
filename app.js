@@ -34,22 +34,52 @@ function witness(c){
  if(r===0)return '阿禾把药铺的灯拿低了些。「船不是沉下去的。我在井边听见船板碰了两声。爹说，竖着的舟最怕人踩船底，要认准龙骨边上的木榫。」她指向'+place[2]+'。';
  return (E.residents(r).find(p=>p.site===1)?.name||'守脉人')+'展开一张旧拓片。「'+['','师兄的草鞋没铁钉。他每天去池底，回来总是只有鞋边沾锈。','大水把苇子全吹倒那年，系船那一丛从没弯过腰。','当年我们拿干饭堵风，哪个孔先湿，隔壁的水接着就到。','我娘耳背，偏能从鼓里听见楼下送饭的孩子。','矿里没风的地方，盐从心到边都是黑的。','塔下的油是一瓮分的，越近塔心，火苗倒越矮。','送夜饭的孩子够不到高环。真正来开门的人只听矮的那个。','你走的时候山不会走。两道影子分着的时候，我丢过一头骡。','先生叫我小七，那间空屋却喊我师兄。那天屋里原来有两个人。','两口棺一起落葬，后来却有人回来敲过其中一柄槌。','赶车人教过我，看柳皮哪边焦，再看车轮碰过哪条铁。','我娘给的针筒搁在手里，那天过河，河水没能洗掉我的茧。','我爹放纸鸢，看风紧就松短头。他收云契也是这手势。','我擦过那架星盘，抹布钩着一道刻痕。真的星哪能钩破布？','当年钟鸣，我背人走出外城才听见余音散尽。','童年抢水，先堵高渠的人总被倒灌一身泥。','两个人都赌咒自己按过手印。抄书的孩子只问我，纸从哪一页撕的。','我埋种从来记最后一场霜。丰收碑上看不到那天。','推碑的车一边轻一边重，楔子只要带一只。','第二字后面原有一息停顿。如今的人一口气念完，我才知有人动过它。','潮来时两岸各湿半张，水可没替谁家说过谎。','写戏的那人一整晚都坐在台下。他听别人唱，不肯替人落最后一笔。','你还记得青溪渡吗？小孩子够得着的那一结，老师傅总是最后才解。'][r]+' 我当年在'+place[2]+'就是凭这一点脱身的。」';
 }
+function placeName(c){
+ if(c.area==='city')return E.cities[c.region]+' · '+Lore.regions[c.region].locations[c.loc];
+ if(c.area==='road')return Lore.regions[c.region].name+'驿道';
+ if(c.area==='home')return '青溪药村';
+ return E.stops(c).find(z=>z.id===c.temple)?.name||'山门';
+}
+function portal(c){
+ const here=E.station(c);if(!here)return '';
+ if(!c.stations.includes(here))return row('传送阵台','阵石仍暗。亲手在此留印，日后方能循阵归来。',b('attune','点亮阵台',{},'prime'));
+ const others=E.stops(c).filter(z=>c.stations.includes(z.id)&&z.id!==here&&z.r<=c.r);
+ return row('传送阵已点亮',others.length?'已连通 '+others.length+' 处目的地。':'再点亮另一处阵台，两地即可往返。',others.length?b('modal','选择传送地',{id:'portals'}):'');
+}
+function province(c){
+ const r=c.region,home=c.area==='home',road=c.area==='road',places=E.stops(c),temple=places.find(z=>z.id===c.temple),reg=Lore.regions[r];
+ let body='';
+ if(c.cultivating)body=row('正在入定','收功后方可动身。',b('stop','收功起身'));
+ else if(home){const pass=c.flags.includes('village_pass');body=row('梅婆 · 药村渡头',pass?'「拿好路引。渡船过了第一道回水湾，就能望见白沙渡镇。」':'梅婆坐在埠头拣药，把青布篷的小船留到最后。',pass?b('outside','沿河堤出村',{},'prime'):b('getPass','问去镇上的路',{},'prime'))+portal(c);}
+ else if(road){
+ body=group('前方城镇',row(esc(E.cities[r]),esc(reg.description),b('enterPlace','进入'+esc(E.cities[r]),{id:'city'+r},'prime')));
+ const sects=places.filter(z=>z.area==='sect'&&z.r===r);if(sects.length)body+=group('沿途山门',sects.map(z=>row(esc(z.name),'山门设有传送阵。',b('enterPlace','拜山',{id:z.id}))).join(''));
+ body+=group('驿路去向',[r-1,r+1].filter(i=>E.cities[i]).map(i=>row(esc(E.cities[i])+'方向',i>c.r?'通关所需：'+E.realms[i]+'境':'可徒步抵达邻境，再由城门进城。',b('road','前往邻境',{i},'btn',i>c.r))).join('')+(r===0?b('enterPlace','回青溪药村',{id:'home'}):''));
+ }else if(temple){const sectDef=Sects.list.find(z=>z.id===temple.id);
+ body=row(esc(temple.name),esc(sectDef?.desc||'你亲手立下的山门。'),sectDef&&!c.sect?b('modal','叩门问师',{id:'join',sect:temple.id}):'')+portal(c)+b('outside','下山回驿道');}
+ if(!road&&!c.cultivating)body+=row('歇脚调息','此地灵气 '+E.density(c,r,c.loc)+'% · 约 '+num(E.rate(c))+' 修为／时',b('sit','在此入定',{},'btn',c.xp>=E.target(c)));
+ return layout(hero(r,placeName(c),reg.name,home?'乡里':road?'官道与渡口':'宗门山门','历游第 '+c.day+' 日')+'<section class="sheet">'+b('modal','查看天下城邦',{id:'map'})+body+'</section>',c);
+}
+
 function field(c){
+ if(c.area!=='city')return province(c);
  const r=c.region,region=Lore.regions[r],loc=c.loc,n=c.story[r]||0,ch=Lore.chapters[r],next=E.storySite(c,r),heard=c.flags.includes('heard_'+r),d=Almanac.dungeons[r],known=E.attuned(c,r);
  const sit=b(c.cultivating?'stop':'sit',c.cultivating?'收功起身':'在此入定',{},'prime',!c.cultivating&&(c.xp>=E.target(c)||loc===4&&!known));
  let panel=row(region.locations[loc]+' · 灵气 '+E.density(c,r,loc)+'%',c.cultivating?'气息已定，关闭网页可继续修炼。':'此地吐纳约 '+num(E.rate(c))+' 修为／时。',sit);
  if(!c.cultivating){
+ if(c.region<c.r)panel+=row('关牒已开','通往'+E.cities[c.region+1]+'的驿道已开放。回到'+region.locations[0]+'，出城即可启程。');
+ if(loc===0)panel+=portal(c)+b('outside','出城上驿道');
  if(loc===1)panel+=row(E.residents(r).find(p=>p.site===1)?.name||'守脉人',heard?witness(c):'有人常年守在此地，知道灵潮何时倒转。',b('askVein',heard?'再听一次':'询问地脉'));
  if(loc===2){let room=d.rooms[E.answer(r)];panel+=group('察看地势','<p>'+esc(room.text)+'</p>'+(known?'灵路已通，可去'+esc(region.locations[4])+'闭关。':heard?'<blockquote>'+esc(witness(c))+'</blockquote><div class="choices">'+d.rooms.map((x,i)=>b('survey',esc(x.clue),{i})).join('')+'</div>':'旧痕难辨，先去'+esc(region.locations[1])+'问一问。'))+b('crypt','探入'+esc(d.name),{id:'enter'});}
  if(loc===4&&!known)panel+=row('灵潮倒灌','须先向'+region.locations[1]+'的守脉人问路，再到'+region.locations[2]+'辨脉。');
  if(n<ch.nodes.length)panel+=row(ch.title,loc===next?'眼前有一段未了的因果。':'下一条消息在「'+region.locations[next]+'」。',loc===next?b('begin','上前探问',{type:'story',i:r},'prime'):'');
  panel+=local(c)+b('explore','沿此地寻访',{id:'search'})+b('explore','查探退路',{id:'scout'})+(loc===0||loc===3?b('rest','歇脚 · '+Math.ceil(3*E.scale(r))+' 石'):'');
  }
- return layout(hero(r,region.locations[loc],region.name,E.realms[c.r]+'篇 · 行旅','历游第 '+c.day+' 日')+'<section class="sheet">'+group('山径与灵脉',tileMap(c,r)+b('modal','查看其他地域',{id:'map'}))+panel+'</section>',c);
+ return layout(hero(r,region.locations[loc],E.cities[r]+' · '+region.name,E.realms[c.r]+'篇 · 行旅','历游第 '+c.day+' 日')+'<section class="sheet">'+group('山径与灵脉',tileMap(c,r)+b('modal','查看天下城邦',{id:'map'}))+panel+'</section>',c);
 }
 
-function local(c){let s=Lore.sidequests.flatMap((q,i)=>q.realm===c.region&&E.sideSite(c,i)===c.loc?[row(esc(q.title),(c.side[i]||0)+' / '+q.nodes.length+' 节',b('begin','寻访',{type:'side',i},'btn',(c.side[i]||0)>=q.nodes.length))]:[]).join('');let n=Almanac.people.flatMap((p,i)=>E.residents(c.region).some(x=>x.i===i&&x.site===c.loc)?[row(esc(p.name)+' · '+esc(p.role),esc((c.friends[i]||0)>=3?p.friend:p.meeting),b('meet','拜访 '+(c.friends[i]||0)+'/5',{i},'btn',(c.friends[i]||0)>=5))]:[]).join('');return (s?group('此处旧事',s):'')+(n?group('在地故人',n):'');}
-function training(c){let t=tab||'闭关',s='';if(t==='闭关'){let proof=E.proof(c);s=group(realm(c),'<div class="between">'+micro('修为 '+num(c.xp)+' / '+num(E.target(c)))+micro('每小时 '+num(E.rate(c))+' 修为')+'</div>'+bar(c.xp,E.target(c))+row(c.s===3?'大境突破':'小境精进',c.s===3?E.gates(c).map(([n,ok])=>(ok?'✓ ':'○ ')+n).join('<br>')+'<br>破境把握 '+Math.round(100*E.chance(c))+'%':'距瓶颈约 '+Math.ceil(Math.max(0,E.target(c)-c.xp)/E.rate(c)*60)+' 分钟。',b('advance',c.s===3?'尝试破境':'精进境界',{},'prime',c.xp+.00001<E.target(c))))+row('定点修炼',Lore.regions[c.region].locations[c.loc]+' · 灵气 '+E.density(c,c.region,c.loc)+'% · '+(c.cultivating?'已入定':'尚未入定'),b(c.cultivating?'stop':'sit',c.cultivating?'收功':'就地入定'))+group('日常委托','<p class="soft">入定期间暂停杂务；收功或修满后按次序执行。药圃与差事可持续进行，适合排在最后。印证来自近五境的支线、秘境或已习到六点心得的近境功法。</p><div class="choices">'+[0,1,2,3].map(i=>'<select class="task" aria-label="第'+(i+1)+'项安排"><option value="">空置</option>'+Object.entries(E.jobs).filter(([k])=>k!=='train').map(([k,v])=>'<option value="'+k+'" '+(c.tasks[i]===k?'selected':'')+'>'+v+'</option>').join('')+'</select>').join('')+b('saveTasks','保存安排',{},'prime')+'</div>');}
+function local(c){if(c.area!=='city')return '<p>进城后，可在人物所在的地块寻访。</p>';let s=Lore.sidequests.flatMap((q,i)=>q.realm===c.region&&E.sideSite(c,i)===c.loc?[row(esc(q.title),(c.side[i]||0)+' / '+q.nodes.length+' 节',b('begin','寻访',{type:'side',i},'btn',(c.side[i]||0)>=q.nodes.length))]:[]).join('');let n=Almanac.people.flatMap((p,i)=>E.residents(c.region).some(x=>x.i===i&&x.site===c.loc)?[row(esc(p.name)+' · '+esc(p.role),esc((c.friends[i]||0)>=3?p.friend:p.meeting),b('meet','拜访 '+(c.friends[i]||0)+'/5',{i},'btn',(c.friends[i]||0)>=5))]:[]).join('');return (s?group('此处旧事',s):'')+(n?group('在地故人',n):'');}
+function training(c){let t=tab||'闭关',s='';if(t==='闭关'){let proof=E.proof(c);s=group(realm(c),'<div class="between">'+micro('修为 '+num(c.xp)+' / '+num(E.target(c)))+micro('每小时 '+num(E.rate(c))+' 修为')+'</div>'+bar(c.xp,E.target(c))+row(c.s===3?'大境突破':'小境精进',c.s===3?E.gates(c).map(([n,ok])=>(ok?'✓ ':'○ ')+n).join('<br>')+'<br>破境把握 '+Math.round(100*E.chance(c))+'%':'距瓶颈约 '+Math.ceil(Math.max(0,E.target(c)-c.xp)/E.rate(c)*60)+' 分钟。',b('advance',c.s===3?'尝试破境':'精进境界',{},'prime',c.xp+.00001<E.target(c))))+row('定点修炼',placeName(c)+' · 灵气 '+E.density(c,c.region,c.loc)+'% · '+(c.cultivating?'已入定':'尚未入定'),b(c.cultivating?'stop':'sit',c.cultivating?'收功':'就地入定'))+group('日常委托','<p class="soft">入定期间暂停杂务；收功或修满后按次序执行。药圃与差事可持续进行，适合排在最后。印证来自近五境的支线、秘境或已习到六点心得的近境功法。</p><div class="choices">'+[0,1,2,3].map(i=>'<select class="task" aria-label="第'+(i+1)+'项安排"><option value="">空置</option>'+Object.entries(E.jobs).filter(([k])=>k!=='train').map(([k,v])=>'<option value="'+k+'" '+(c.tasks[i]===k?'selected':'')+'>'+v+'</option>').join('')+'</select>').join('')+b('saveTasks','保存安排',{},'prime')+'</div>');}
  if(t==='功法'){s=Object.entries(c.arts).map(([k,id])=>{let x=E.item(id),v=c.master[id]||0,l=[4,12,25,42,60].filter(z=>v>=z).length;return row(esc(x.name)+' '+tag(x),k+' · '+['入门','熟练','精通','大成','圆满','化境'][l]+' · 心得 '+v+'/60 · '+esc(x.desc),b('use','设为参悟目标',{id})+(v>=25&&!c.forms[id]?b('form','精修',{id,form:'精修'})+b('form','兼济',{id,form:'兼济'}):''));}).join('');}
  if(t==='丹房'){s='<p class="note">青露草 '+num(c.bag.h)+' 份，灵石 '+num(c.coin)+' 枚。丹方列入队列后，可在闭关中安排开炉。熟练程度影响成丹品质。</p>'+Catalog.pills.filter(x=>x.realm<=c.r&&x.realm>=Math.max(0,c.r-2)).map(x=>{let k=E.cost(x);return row(esc(x.name)+' '+tag(x),x.kind+' · '+k.h+' 草 / '+k.coin+' 石 · 已炼 '+(c.brew[x.id]||0)+' 炉',b('craft','开炉',{id:x.id})+b('recipe',c.recipe===x.id?'当前丹方':'列入队列',{id:x.id})+((c.brew[x.id]||0)>=3?b('formula',c.formula[x.id]?'还原':'改方合剂',{id:x.id}):''));}).join('');}
  if(t==='器室'){let w=E.item(c.weapon);s=row(esc(w.name)+' '+tag(w),esc(w.desc)+'　温养 '+(c.forge[w.id]||0)+'/8。闭关可安排温养。',b('modal','详情',{id:'item',item:w.id}))+row('本命兵器',c.bond?esc(E.item(c.bond).name)+' · '+E.realms[c.bondRealm]:'金丹之后可执一件兵器认主。',c.bond?b('reforge','随境重铸 · 4 砂 / '+Math.ceil(20*E.scale(c.r))+' 石'):b('bond','认作本命',{},'btn',c.r<5));}
@@ -75,13 +105,14 @@ function dialogView(){let c=g.c,v=args,title='',s='';switch(dialog){
  case 'settings':title='灯下设置';s=row('夜读模式','调整纸面明暗。',b('night','切换明暗'))+row('正文字号',(Number(localStorage.getItem('qingxi-size'))||17)+' px',b('size','小一号',{n:-1})+b('size','大一号',{n:1}))+row('存档迁移','导出当前世界。导入将在你确认后替换此设备的进度。',ledgerControls())+row('桌面安装','首次联网完成资源缓存后，可在桌面继续游玩。iPhone 使用 Safari 的分享菜单添加到主屏幕。')+row('游记凡例','查看创建、探索、修行与身后事。',b('modal','阅读',{id:'guide'}));break;
  case 'profile':title=esc(c.name)+' · '+realm(c);s=c.traits.map(id=>Traits.find(t=>t.id===id)).map(t=>row(esc(t.name)+' '+tag(t),esc(t.desc))).join('')+row('已修功法',Object.values(c.arts).map(id=>esc(E.item(id).name)).join('、'));break;
  case 'ledger':title='随身钱袋';s=ledger(c);break;
- case 'map':{title='山河舆图';let r=Number(v.r??c.region);s='<label>地域　<select id="region">'+Lore.regions.map((x,i)=>'<option value="'+i+'" '+(i===r?'selected':'')+' '+(i>c.r?'disabled':'')+'>'+E.realms[i]+' · '+esc(x.name)+'</option>').join('')+'</select></label><p class="quote">'+esc(Lore.regions[r].description)+'</p>'+tileMap(c,r);break;}
- case 'tile':{let {r,i}=v,region=Lore.regions[r],here=c.region===r&&c.loc===i;title=region.locations[i];s=row('灵气浓度',E.density(c,r,i)+'% · '+['此处驿口可往返已解锁地域。','当地人知道一条通往灵脉的路。','循口述勘验地势，可寻得灵眼。','可在此歇脚或静坐。','最浓郁的灵气汇于此。辨明灵脉后方可入定。'][i])+row('相连山径',E.paths[i].map(j=>region.locations[j]).join('、'))+b('travel',here?'你在这里':'沿径前往',{r,i},'prime',here||c.cultivating||(r===c.region?!E.paths[c.loc].includes(i):c.loc!==0||i!==0))+b('modal','返回舆图',{id:'map',r});break;}
+ case 'map':{title='天下城邦';s='<p class="quote">你在'+esc(placeName(c))+'。初访沿驿道步行，回访可在已连通的阵台之间传送。</p>'+E.cities.map((name,r)=>row(esc(name),E.cityRank(r)+' · '+esc(Lore.regions[r].name)+' · '+E.realms[r]+'境',r>c.r?'未通行':c.region===r&&c.area==='city'?'所在城镇':c.stations.includes('city'+r)?'阵台已亮':c.flags.includes('visit_city'+r)?'曾经到访':'可沿驿路寻访')).join('');break;}
+ case 'portals':{title='驿阵传送';s=E.stops(c).filter(z=>z.id!==E.station(c)&&c.stations.includes(z.id)&&z.r<=c.r).map(z=>row(esc(z.name),esc(Lore.regions[z.r].name)+' · '+E.transferCost(c,z.r)+' 下品灵石',b('transfer','传送',{id:z.id},'btn',c.coin<E.transferCost(c,z.r)))).join('');break;}
+ case 'tile':{let {r,i}=v,region=Lore.regions[r],here=c.region===r&&c.loc===i;title=region.locations[i];s=row('灵气浓度',E.density(c,r,i)+'% · '+['此处可出城上驿道，或在阵台留印。','当地人知道一条通往灵脉的路。','循口述勘验地势，可寻得灵眼。','可在此歇脚或静坐。','最浓郁的灵气汇于此。辨明灵脉后方可入定。'][i])+row('相连山径',E.paths[i].map(j=>region.locations[j]).join('、'))+b('travel',here?'你在这里':'沿径前往',{r,i},'prime',here||c.cultivating||(r===c.region?!E.paths[c.loc].includes(i):c.loc!==0||i!==0))+b('close','回到城镇');break;}
  case 'item':{let x=E.item(v.item),p=E.quote(c,x.id);title=esc(x.name);s=tag(x)+' '+micro(E.realms[x.realm]+' · '+x.kind)+'<p class="lead">'+esc(x.desc)+'</p>'+row('当下行情','买价 '+p.buy+' 石 · 回收 '+p.sell+' 石')+(E.pill(x.id)?row('炼制材料',E.cost(x).h+' 份青露草，'+E.cost(x).coin+' 灵石'):'')+row('行囊数量',num(c.bag[x.id])+' 件');break;}
  case 'trade':{let x=E.item(v.item),p=E.quote(c,x.id),price=v.sell?p.sell:p.buy;title=(v.sell?'卖出 · ':'购入 · ')+esc(x.name);s=tag(x)+'<p class="lead">'+esc(x.desc)+'</p>'+row('成交单价',price+' 下品灵石')+row(v.sell?'持有数量':'商号现货',num(v.sell?c.bag[x.id]:p.stock))+'<label>数量　<input id="qty" type="number" min="1" max="99" value="1" style="width:6em"></label><p id="total" class="note">共 '+price+' 灵石 · 钱袋 '+num(c.coin)+' 石</p>'+b('trade','确认'+(v.sell?'卖出':'购入'),{id:x.id,sell:v.sell,price},'prime');break;}
  case 'offline':title='出关纪事';s='<div class="quote">本次离开 '+Math.max(1,Math.round((c.report?.time||0)/60))+' 分钟。</div>'+(c.report?.lines||[]).map(z=>'<div class="line">'+esc(z)+'</div>').join('')+b('dismiss','收好纪事',{},'prime');break;
  case 'local':title='地方旧事';s=local(c);break;
- case 'join':{let x=Sects.list.find(z=>z.id===v.sect);title=esc(x.name);s='<p class="lead">'+esc(x.desc)+'</p>'+row('宗门传承',esc(x.art))+'<div class="tabs">'+x.branches.map(z=>b('join','拜入'+esc(z),{id:x.id,branch:z},'prime')).join('')+'</div>';break;}
+ case 'join':{let x=Sects.list.find(z=>z.id===v.sect);title=esc(x.name);s='<p class="lead">'+esc(x.desc)+'</p>'+row('宗门传承',esc(x.art))+row('山门所在',esc(Lore.regions[x.region].name)+'驿道 · '+E.realms[x.region]+'境通行，至山门可拜师。')+'<div class="tabs">'+x.branches.map(z=>b('join','拜入'+esc(z),{id:x.id,branch:z},'prime',c.area!=='sect'||c.temple!==x.id)).join('')+'</div>';break;}
  case 'treaty':title=esc(Sects.treaties[v.i].name);s='<p class="lead">'+esc(Sects.treaties[v.i].desc)+'</p>'+b('treaty','签署 · '+Sects.treaties[v.i].cost+' 石',v,'prime');break;
  case 'rebirth':title='此世封卷';s='<p class="lead">放下今世的修为与器物，留下自己改变的世界。新一世将重新拈签。</p>'+b('rebirth','确认转世',{},'prime');break;
  case 'import':title='接续迁移档';s='<p class="lead">用「'+esc(imported?.c?.name||'未题名')+'」的档案替换当前世界？</p>'+b('accept','确认替换',{},'prime');break;}
@@ -96,7 +127,7 @@ document.addEventListener('click',async e=>{let el=e.target.closest('[data-op]')
  if(op==='import')return $('file').click();if(op==='accept'&&imported){let apply=()=>{g=E.migrate(imported);localStorage.setItem(KEY,JSON.stringify(g));imported=null;invalid=false;};if(navigator.locks)await navigator.locks.request(KEY,apply);else apply();close();page='行旅';tab='';filter='';render();return toast('迁移档已接续。');}
  if(op==='review')return modal('treaty',{id:$('other').value,i:v.i});
  if(op==='saveTasks'){op='tasks';v.list=[...document.querySelectorAll('select.task')].map(s=>s.value).filter(Boolean);}if(op==='trade')v.n=Number($('qty').value);if(op==='bid')v.n=Number($('bid').value);if(op==='found')v.name=$('found').value;if(g.phase==='draft'&&$('name'))v.name=$('name').value;
- let before=g.phase,result=await change(s=>E.act(s,op,v));if(!result.ok)return;if(!(dialog==='local'&&op==='meet'))close();if(before!==g.phase||['begin','travel','explore','rebirth'].includes(op)){page='行旅';tab='';filter='';scrollTo(0,0);}render();toast(result.note);});
+ let before=g.phase,result=await change(s=>E.act(s,op,v));if(!result.ok)return;if(!(dialog==='local'&&op==='meet'))close();if(before!==g.phase||['begin','travel','explore','rebirth','road','outside','enterPlace','transfer'].includes(op)){page='行旅';tab='';filter='';scrollTo(0,0);}render();toast(result.note);});
 $('modal').addEventListener('cancel',()=>dialog='');$('modal').addEventListener('click',e=>{if(e.target===$('modal'))close();});
 document.addEventListener('change',e=>{if(e.target.id==='region'){args.r=Number(e.target.value);dialogView();}});
 document.addEventListener('input',e=>{if(e.target.id==='qty'){let p=E.quote(g.c,args.item);$('total').textContent='共 '+num(Math.max(0,Number(e.target.value))*(args.sell?p.sell:p.buy))+' 灵石 · 钱袋 '+num(g.c.coin)+' 石';}
