@@ -1,5 +1,5 @@
 const prefix='shanmen-'+new URL(self.registration.scope).pathname+'-';
-const version=prefix+'20261121a';
+const version=prefix+'20261121-map2';
 const files=['./','./index.html','./style.css','./app.js','./engine.js','./traits.js','./items.js','./sects.js','./stories.js','./almanac.js','./manifest.webmanifest','./assets/river.webp','./assets/mountain.webp','./assets/marsh.webp','./assets/heaven.webp','./assets/icon-192.png','./assets/icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(version).then(c=>c.addAll(files)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(xs=>Promise.all(xs.filter(x=>x.startsWith(prefix)&&x!==version).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));

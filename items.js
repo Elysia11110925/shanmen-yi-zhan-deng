@@ -92,7 +92,7 @@ const pillRows=[
 "突破/承天丹 修为/引川归契丹 疗伤/平潮九叶露 斗法/动山丹",
 "突破/守一丹 疗伤/照誓清心露 探索/烛心丸 修为/践言凝真丹",
 "修为/化道留真丹 疗伤/回山续灯露 探索/遗篇明目丹 炼制/万家传火丹"];
-const pillLore={疗伤:"益气养伤，服下一剂可恢复生命。伤势痊愈时无需服用。",修为:"封存同境吐纳所得的灵息，服后可获得修为。",突破:"使紊乱灵息复归正轨，为破境积蓄助力。",探索:"令耳目清明，出行寻获更丰。",斗法:"药力暂聚于手足，下一场交锋更能发力。",炼制:"药性对炉息敏感，可作开炉前的辅助。"};
+const pillLore={疗伤:"益气养伤，服下一剂可恢复生命。伤势痊愈时无需服用。",修为:"服后提高闭关吐纳效率，药力持续至本阶修满。",突破:"使紊乱灵息复归正轨，为破境积蓄助力。",探索:"令耳目清明，出行寻获更丰。",斗法:"药力暂聚于手足，下一场交锋更能发力。",炼制:"药性对炉息敏感，可作开炉前的辅助。"};
 const ingredients="灯心草 苇根 石络藤 寒蚌粉 明镜叶 火蕊莲 潮珠藻 界苇 隙中青 白鹿苔 双生髓 霆纹枣 洗尘花 流云籽 缺月砂 长青脂 五色泉华 海上牵丝 道种泥 界砂花 鸣石蜜 合契水芝 守誓青实 山门灯芯".split(" ");
 function addPill(realm,kind,name,q){pills.push({id:"p"+pills.length,name,realm,q,kind,stat:[.14,.20,.29,.39,.52,.68][q],craft:{herb:2+Math.floor(realm/4)+Math.floor(q/2),coin:2+realm*2+q*2,origin:origins[realm]},desc:"方引取意于"+origins[realm]+"的"+ingredients[realm]+"。"+pillLore[kind]});}
 pillRows.forEach((row,realm)=>row.split(" ").forEach((entry,slot)=>{const [k,n]=entry.split("/");addPill(realm,k,n,grades[(realm*5+slot)%24]);}));
